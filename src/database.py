@@ -1,4 +1,3 @@
-from dotenv import load_dotenv
 import os
 from flask_sqlalchemy import SQLAlchemy
 
@@ -6,7 +5,6 @@ db = SQLAlchemy()
 
 
 def ConnectDB(app):
-    load_dotenv()
     dbUser = os.getenv('DB_USERNAME')
     dbPass = os.getenv('DB_PASSWORD')
     dbName = os.getenv('DB_DATABASE')
@@ -24,3 +22,5 @@ def ConnectDB(app):
     with app.app_context():
         import model
         db.create_all()
+
+    return db

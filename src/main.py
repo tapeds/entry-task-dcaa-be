@@ -1,12 +1,13 @@
 from flask import Flask, jsonify, request
 from database import ConnectDB
 from dotenv import load_dotenv
-from flask_jwt_extended import JWTManager, create_access_token
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from model import Users
 from helper import validateEmail, ErrorResponse, SuccessResponse
 from flask_bcrypt import Bcrypt
 from datetime import timedelta
 import os
+from authentication import get_user_from_token
 
 app = Flask(__name__)
 
@@ -89,6 +90,25 @@ def register():
             "email": new_user.email
         },
         201
+    )
+
+
+@app.route("/me", methods=["GET"])
+@jwt_required()
+def me():
+    user, err = get_user_from_token(db)
+
+    if err is not None:
+        return err
+
+    return SuccessResponse(
+        "Get Me success!",
+        {
+            "username": user.username,
+            "email": user.email,
+            "profile_picture": user.profile_picture,
+        },
+        200
     )
 
 

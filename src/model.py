@@ -9,4 +9,4 @@ class Users(db.Model):
     password = db.Column(db.String(100), nullable=False)
 
     def __repr__(self):
-        return f"Username : {self.username}, Age: {self.age}"
+        return f"Username : {self.username}, Email: {self.email}"

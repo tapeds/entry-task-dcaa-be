@@ -12,9 +12,10 @@ import os
 from authentication import get_user_from_token
 from werkzeug.utils import secure_filename
 import uuid
+from flask_cors import CORS
 
 app = Flask(__name__)
-
+CORS(app)
 load_dotenv()
 
 db = ConnectDB(app)

@@ -1,13 +1,17 @@
 from flask import Flask, jsonify, request
 from database import ConnectDB
 from dotenv import load_dotenv
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import JWTManager
+from flask_jwt_extended import create_access_token
+from flask_jwt_extended import jwt_required
 from model import Users
 from helper import validateEmail, ErrorResponse, SuccessResponse
 from flask_bcrypt import Bcrypt
 from datetime import timedelta
 import os
 from authentication import get_user_from_token
+from werkzeug.utils import secure_filename
+import uuid
 
 app = Flask(__name__)
 
@@ -34,6 +38,9 @@ def login():
 
     if not email and not password:
         return ErrorResponse("Some fields are missing", 400)
+
+    if not validateEmail(email):
+        return ErrorResponse("Invalid email", 400)
 
     try:
         user = db.session.execute(db.select(Users).filter_by(
@@ -110,6 +117,48 @@ def me():
         },
         200
     )
+
+
+@app.route("/profile_picture", methods=["PATCH"])
+@jwt_required()
+def update_profile_picture():
+    if 'image' not in request.files:
+        return ErrorResponse("No image provided", 400)
+
+    user, err = get_user_from_token(db)
+
+    if err is not None:
+        return err
+
+    image = request.files["image"]
+
+    secure_name = secure_filename(image.filename)
+    unique_id = uuid.uuid4()
+    file_extension = os.path.splitext(secure_name)[1]
+    filename = f"{unique_id}{file_extension}"
+
+    storage_path = os.path.join('storage', filename)
+    os.makedirs('storage', exist_ok=True)
+
+    try:
+        image.save(storage_path)
+    except Exception as e:
+        print(e)
+        return ErrorResponse("Failed to save image, try again later", 500)
+
+    # TODO: Implement delete image from previous user profile picture
+    # to save storage
+
+    user.profile_picture = storage_path
+    db.session.commit()
+
+    return SuccessResponse(
+        'Image uploaded successfully',
+        {'path': storage_path},
+        201
+    )
+
+    # TODO: Implement Logout
 
 
 if __name__ == "__main__":

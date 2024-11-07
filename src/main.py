@@ -141,6 +141,8 @@ def update_profile_picture():
     storage_path = os.path.join('storage', filename)
     os.makedirs('storage', exist_ok=True)
 
+    os.chmod('storage', 0o755)
+
     try:
         image.save(storage_path)
     except Exception as e:

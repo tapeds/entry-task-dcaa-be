@@ -76,6 +76,9 @@ def register():
     if not validateEmail(email):
         return ErrorResponse("Invalid email", 400)
 
+    if not len(password) >= 8:
+        return ErrorResponse("Password is too short", 400)
+
     try:
         user = db.session.execute(db.select(Users).filter_by(
             email=email)).scalar_one_or_none()
@@ -161,7 +164,44 @@ def update_profile_picture():
         201
     )
 
-    # TODO: Implement Logout
+
+@app.route("/update_profile", methods=["PATCH"])
+@jwt_required()
+def update_profile():
+    data = request.get_json()
+
+    user, err = get_user_from_token(db)
+
+    if err is not None:
+        return err
+
+    username = data.get("username") if data else None
+    email = data.get("email") if data else None
+    password = data.get("password") if data else None
+
+    if not email and not username and not password:
+        return ErrorResponse("At least one of the field must be filled", 400)
+
+    if email is not None:
+        if not validateEmail(email):
+            return ErrorResponse("Invalid email", 400)
+
+        user.email = email
+
+    if username is not None:
+        user.username = username
+
+    if password is not None:
+        if not len(password >= 8):
+            return ErrorResponse("Password is too short", 400)
+
+        hashed_password = bcrypt.generate_password_hash(
+            password).decode('utf-8')
+        user.password = hashed_password
+
+    db.session.commit()
+
+    return SuccessResponse("Profile updated successfully", {}, 200)
 
 
 if __name__ == "__main__":

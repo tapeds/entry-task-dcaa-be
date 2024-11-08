@@ -91,17 +91,23 @@ def register():
     hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
     new_user = Users(username=username, email=email, password=hashed_password)
 
-    db.session.add(new_user)
-    db.session.commit()
+    try:
+        db.session.add(new_user)
+        db.session.commit()
 
-    return SuccessResponse(
-        "Register success!",
-        {
-            "username": new_user.username,
-            "email": new_user.email
-        },
-        201
-    )
+        return SuccessResponse(
+            "Register success!",
+            {
+                "username": new_user.username,
+                "email": new_user.email
+            },
+            201
+
+        )
+    except Exception:
+        db.session.rollback()
+        return ErrorResponse("Failed to register, please try again later",
+                             500)
 
 
 @app.route("/me", methods=["GET"])
@@ -156,13 +162,18 @@ def update_profile_picture():
     # to save storage
 
     user.profile_picture = storage_path
-    db.session.commit()
 
-    return SuccessResponse(
-        'Image uploaded successfully',
-        {'path': storage_path},
-        201
-    )
+    try:
+        db.session.commit()
+        return SuccessResponse(
+            'Image uploaded successfully',
+            {'path': storage_path},
+            201
+        )
+    except Exception:
+        db.session.rollback()
+        return ErrorResponse("Failed to update profile picture, please try again later",
+                             500)
 
 
 @app.route("/update_profile", methods=["PATCH"])
@@ -179,29 +190,42 @@ def update_profile():
     email = data.get("email") if data else None
     password = data.get("password") if data else None
 
-    if not email and not username and not password:
+    if not any([email, username, password]):
         return ErrorResponse("At least one of the field must be filled", 400)
 
     if email is not None:
         if not validateEmail(email):
             return ErrorResponse("Invalid email", 400)
 
+    try:
+        exist_user = db.session.execute(db.select(Users).filter_by(
+            email=email)).scalar_one_or_none()
+
+        if exist_user is not None:
+            return ErrorResponse("Email already exist", 400)
+
         user.email = email
+    except Exception:
+        return ErrorResponse("Server error, please try again later", 500)
 
     if username is not None:
         user.username = username
 
     if password is not None:
-        if not len(password >= 8):
+        if not len(password) >= 8:
             return ErrorResponse("Password is too short", 400)
 
         hashed_password = bcrypt.generate_password_hash(
             password).decode('utf-8')
         user.password = hashed_password
 
-    db.session.commit()
-
-    return SuccessResponse("Profile updated successfully", {}, 200)
+    try:
+        db.session.commit()
+        return SuccessResponse("Profile updated successfully", {}, 200)
+    except Exception:
+        db.session.rollback()
+        return ErrorResponse("Failed to update profile, please try again later",
+                             500)
 
 
 if __name__ == "__main__":
